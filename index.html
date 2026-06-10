@@ -1094,6 +1094,13 @@ async function signUp() {
   show();
   const { data, error } = await sb.auth.signUp({ email, password:pass, options: { data: { full_name:name, role } } });
   if (error) { hide(); alertEl('auth-alert', error.message, 'error'); return; }
+  // If session is null, Supabase requires email confirmation before login
+  if (!data.session) {
+    hide();
+    showView('login');
+    alertEl('auth-alert', '✉️ Confirmation email sent! Please check your inbox and click the link, then sign in here.', 'success');
+    return;
+  }
   await new Promise(r => setTimeout(r, 900));
   await boot(data.user);
 }
