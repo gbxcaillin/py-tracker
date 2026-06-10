@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PY Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════
+       WHITELABEL CSS VARIABLES
+       ═══════════════════════════════════════════════════ */
+    :root {
+      --primary:       #2563eb;
+      --primary-dark:  #1d4ed8;
+      --primary-light: #dbeafe;
+      --accent:        #0ea5e9;
+      --bg:            #f1f5f9;
+      --bg-card:       #ffffff;
+      --bg-sidebar:    #1e293b;
+      --text:          #1e293b;
+      --text-muted:    #64748b;
+      --border:        #e2e8f0;
+      --success:       #22c55e;
+      --success-bg:    #dcfce7;
+      --warning:       #f59e0b;
+      --warning-bg:    #fef3c7;
+      --danger:        #ef4444;
+      --danger-bg:     #fee2e2;
+      --radius:        8px;
+      --shadow:        0 1px 3px rgba(0,0,0,.09);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── VIEW ROUTING ─── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ════════════════════════════════
+       LANDING
+       ════════════════════════════════ */
+    #view-landing { min-height:100vh; background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%); display:none; flex-direction:column; }
+    #view-landing.active { display:flex; }
+
+    .nav-bar { display:flex; justify-content:space-between; align-items:center; padding:1.5rem 3rem; }
+    .nav-logo { color:white; font-size:1.35rem; font-weight:800; letter-spacing:-.5px; }
+    .nav-logo span { color:var(--accent); }
+
+    .hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4rem 2rem; }
+    .hero-badge { background:rgba(37,99,235,.2); border:1px solid rgba(37,99,235,.35); color:var(--accent); padding:.35rem 1rem; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; margin-bottom:1.5rem; }
+    .hero-title { font-size:clamp(2rem,5vw,3.3rem); font-weight:800; color:white; line-height:1.1; max-width:660px; margin-bottom:1.25rem; }
+    .hero-title span { color:var(--accent); }
+    .hero-sub { font-size:1rem; color:rgba(255,255,255,.6); max-width:520px; line-height:1.65; margin-bottom:2.5rem; }
+
+    .role-cards { display:flex; gap:1rem; margin-top:3.5rem; flex-wrap:wrap; justify-content:center; }
+    .role-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:1.2rem 1.4rem; width:190px; text-align:left; }
+    .role-card .icon { font-size:1.7rem; margin-bottom:.45rem; }
+    .role-card .rtitle { color:white; font-weight:600; font-size:.93rem; margin-bottom:.2rem; }
+    .role-card .rdesc { color:rgba(255,255,255,.45); font-size:.78rem; line-height:1.45; }
+
+    /* ════════════════════════════════
+       SETUP
+       ════════════════════════════════ */
+    #view-setup { min-height:100vh; background:linear-gradient(135deg,#1e293b,#0f172a); display:none; align-items:center; justify-content:center; padding:2rem; }
+    #view-setup.active { display:flex; }
+    .setup-card { background:white; border-radius:16px; padding:2.5rem; width:100%; max-width:580px; max-height:92vh; overflow-y:auto; }
+    .setup-title { font-size:1.35rem; font-weight:700; margin-bottom:.4rem; }
+    .setup-sub { color:var(--text-muted); font-size:.875rem; line-height:1.6; margin-bottom:1.5rem; }
+    .code-block { background:#0f172a; color:#e2e8f0; padding:1rem; border-radius:var(--radius); font-family:monospace; font-size:.72rem; line-height:1.6; overflow:auto; white-space:pre; max-height:260px; margin-bottom:.75rem; }
+    .section-divider { border-top:1px solid var(--border); padding-top:1.5rem; margin-top:1.5rem; }
+    .section-label { font-weight:700; font-size:.88rem; margin-bottom:.6rem; }
+
+    /* ════════════════════════════════
+       LOGIN
+       ════════════════════════════════ */
+    #view-login { min-height:100vh; background:linear-gradient(135deg,#1e293b,#0f172a); display:none; align-items:center; justify-content:center; padding:2rem; }
+    #view-login.active { display:flex; }
+    .login-card { background:white; border-radius:16px; padding:2.5rem; width:100%; max-width:415px; box-shadow:0 25px 50px rgba(0,0,0,.3); }
+    .login-logo { font-size:1.1rem; font-weight:700; color:var(--primary); margin-bottom:.35rem; }
+    .login-title { font-size:1.45rem; font-weight:700; margin-bottom:.3rem; }
+    .login-sub { color:var(--text-muted); font-size:.87rem; margin-bottom:1.65rem; }
+    .auth-tabs { display:flex; gap:.45rem; margin-bottom:1.45rem; }
+    .auth-tab { flex:1; padding:.48rem; text-align:center; font-size:.83rem; font-weight:600; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; background:white; color:var(--text-muted); transition:all .15s; }
+    .auth-tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+    .login-footer { margin-top:1rem; text-align:center; font-size:.8rem; }
+
+    /* ════════════════════════════════
+       APP SHELL
+       ════════════════════════════════ */
+    #view-app { display:none; min-height:100vh; }
+    #view-app.active { display:flex; }
+
+    .sidebar { width:232px; background:var(--bg-sidebar); display:flex; flex-direction:column; flex-shrink:0; min-height:100vh; position:sticky; top:0; height:100vh; overflow-y:auto; }
+    .sidebar-head { padding:1.35rem 1.2rem .9rem; border-bottom:1px solid rgba(255,255,255,.08); }
+    .sidebar-logo { color:white; font-size:1.05rem; font-weight:800; }
+    .sidebar-afsl { font-size:.67rem; color:rgba(255,255,255,.32); margin-top:.15rem; text-transform:uppercase; letter-spacing:.06em; }
+    .sidebar-nav { flex:1; padding:.9rem .7rem; }
+    .nav-section { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.28); padding:.5rem .5rem .2rem; margin-top:.25rem; }
+    .nav-btn { display:flex; align-items:center; gap:.6rem; padding:.55rem .7rem; border-radius:7px; cursor:pointer; color:rgba(255,255,255,.55); font-size:.85rem; font-weight:500; transition:all .15s; border:none; background:none; width:100%; text-align:left; }
+    .nav-btn:hover { background:rgba(255,255,255,.07); color:white; }
+    .nav-btn.active { background:var(--primary); color:white; }
+    .nav-icon { width:20px; text-align:center; font-size:.9rem; flex-shrink:0; }
+    .sidebar-foot { padding:.9rem .7rem; border-top:1px solid rgba(255,255,255,.08); }
+    .user-chip { display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; }
+    .user-av { width:33px; height:33px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.82rem; color:white; flex-shrink:0; }
+    .user-nm { font-size:.83rem; font-weight:600; color:white; }
+    .user-rl { font-size:.69rem; color:rgba(255,255,255,.4); }
+    .btn-logout { width:100%; background:rgba(255,255,255,.07); border:none; color:rgba(255,255,255,.55); padding:.46rem; border-radius:6px; cursor:pointer; font-size:.79rem; transition:all .2s; }
+    .btn-logout:hover { background:rgba(255,255,255,.12); color:white; }
+
+    /* ════════════════════════════════
+       MAIN CONTENT
+       ════════════════════════════════ */
+    .main { flex:1; padding:2rem; overflow-y:auto; min-width:0; }
+    .page-hd { margin-bottom:1.65rem; }
+    .page-title { font-size:1.4rem; font-weight:700; margin-bottom:.2rem; }
+    .page-sub { color:var(--text-muted); font-size:.875rem; }
+
+    /* ════════════════════════════════
+       SHARED COMPONENTS
+       ════════════════════════════════ */
+
+    /* Buttons */
+    .btn { cursor:pointer; font-weight:600; border:none; border-radius:var(--radius); transition:all .15s; }
+    .btn-primary { background:var(--primary); color:white; padding:.7rem 1.55rem; font-size:.93rem; }
+    .btn-primary:hover { background:var(--primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .btn-ghost-dark { background:transparent; border:1px solid rgba(255,255,255,.28); color:white; padding:.48rem 1.15rem; font-size:.85rem; }
+    .btn-ghost-dark:hover { background:rgba(255,255,255,.1); }
+    .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); padding:.42rem .85rem; font-size:.81rem; border-radius:6px; }
+    .btn-outline:hover { background:var(--bg); }
+    .btn-sm { padding:.36rem .82rem; font-size:.79rem; border-radius:6px; border:none; font-weight:600; cursor:pointer; transition:all .15s; }
+    .btn-approve { background:var(--success); color:white; } .btn-approve:hover { background:#16a34a; }
+    .btn-reject  { background:var(--danger);  color:white; } .btn-reject:hover  { background:#dc2626; }
+    .btn-blue    { background:var(--primary);  color:white; } .btn-blue:hover    { background:var(--primary-dark); }
+    .btn-full { width:100%; }
+    .link-btn { background:none; border:none; color:var(--primary); cursor:pointer; font-size:.83rem; text-decoration:underline; padding:0; }
+
+    /* Forms */
+    .form-group { margin-bottom:1rem; }
+    .form-label { display:block; font-size:.81rem; font-weight:600; margin-bottom:.36rem; }
+    .form-input, .form-select, .form-textarea {
+      width:100%; padding:.6rem .88rem; border:1px solid var(--border);
+      border-radius:var(--radius); font-size:.91rem; color:var(--text);
+      font-family:inherit; background:white; outline:none; transition:border-color .15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-light);
+    }
+    .form-textarea { resize:vertical; min-height:76px; }
+    .form-select { cursor:pointer; }
+
+    /* Checkbox group for competencies */
+    .check-group { display:flex; flex-wrap:wrap; gap:.5rem; }
+    .check-pill { display:flex; align-items:center; gap:.35rem; padding:.32rem .7rem; border:1px solid var(--border); border-radius:999px; cursor:pointer; font-size:.78rem; font-weight:500; transition:all .15s; user-select:none; }
+    .check-pill input { display:none; }
+    .check-pill:hover { border-color:var(--primary); }
+    .check-pill.checked { background:var(--primary); color:white; border-color:var(--primary); }
+
+    /* Cards */
+    .card { background:var(--bg-card); border-radius:12px; border:1px solid var(--border); padding:1.45rem; box-shadow:var(--shadow); }
+    .card-title { font-size:.95rem; font-weight:700; margin-bottom:.9rem; }
+
+    /* Stats */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .stat { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:1.15rem; box-shadow:var(--shadow); }
+    .stat-label { font-size:.77rem; color:var(--text-muted); font-weight:500; margin-bottom:.3rem; }
+    .stat-value { font-size:1.75rem; font-weight:800; line-height:1; }
+    .stat-sub { font-size:.72rem; color:var(--text-muted); margin-top:.2rem; }
+
+    /* Progress bar */
+    .prog-wrap { background:var(--border); border-radius:999px; height:8px; overflow:hidden; }
+    .prog-fill { height:100%; border-radius:999px; background:var(--primary); transition:width .4s; }
+    .prog-fill.green { background:var(--success); }
+    .prog-label { display:flex; justify-content:space-between; font-size:.77rem; color:var(--text-muted); margin-top:.35rem; }
+
+    /* Target progress card */
+    .target-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:1.2rem; box-shadow:var(--shadow); }
+    .target-title { font-size:.85rem; font-weight:700; margin-bottom:.6rem; }
+    .target-big { font-size:1.55rem; font-weight:800; margin-bottom:.5rem; }
+    .target-big span { font-size:.85rem; font-weight:400; color:var(--text-muted); }
+
+    /* Alerts */
+    .alert { padding:.68rem .95rem; border-radius:var(--radius); font-size:.83rem; margin-bottom:.9rem; }
+    .alert-error   { background:var(--danger-bg);  color:#991b1b; border:1px solid #fca5a5; }
+    .alert-success { background:var(--success-bg); color:#15803d; border:1px solid #86efac; }
+    .alert-info    { background:var(--primary-light); color:#1e40af; border:1px solid #93c5fd; }
+    .alert-warn    { background:var(--warning-bg); color:#92400e; border:1px solid #fcd34d; }
+
+    /* Table */
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:.85rem; }
+    th { text-align:left; padding:.58rem .78rem; font-size:.71rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); border-bottom:2px solid var(--border); white-space:nowrap; }
+    td { padding:.68rem .78rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--bg); }
+
+    /* Badges */
+    .badge { display:inline-block; padding:.19rem .55rem; border-radius:999px; font-size:.69rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+    .badge-draft               { background:#f1f5f9; color:#475569; }
+    .badge-submitted           { background:#fef3c7; color:#92400e; }
+    .badge-supervisor_approved { background:#dbeafe; color:#1e40af; }
+    .badge-supervisor_rejected { background:#fee2e2; color:#991b1b; }
+    .badge-compliance_approved { background:#dcfce7; color:#166534; }
+    .badge-compliance_rejected { background:#fee2e2; color:#991b1b; }
+    .badge-tc   { background:#ede9fe; color:#6d28d9; }
+    .badge-ccp  { background:#e0f2fe; color:#0369a1; }
+    .badge-rccp { background:#fef3c7; color:#92400e; }
+    .badge-pe   { background:#dcfce7; color:#166534; }
+    .badge-work { background:#ede9fe; color:#6d28d9; }
+    .badge-cpd  { background:#e0f2fe; color:#0369a1; }
+
+    /* Quarter status card */
+    .qcard { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:1.2rem; box-shadow:var(--shadow); display:flex; align-items:flex-start; gap:1rem; }
+    .qcard-info { flex:1; min-width:0; }
+    .qcard-title { font-weight:700; font-size:.93rem; margin-bottom:.15rem; }
+    .qcard-meta { font-size:.78rem; color:var(--text-muted); margin-bottom:.3rem; }
+    .qcard-checklist { font-size:.77rem; color:var(--text-muted); }
+    .qcard-checklist span { display:inline-block; margin-right:.5rem; }
+    .qcard-actions { display:flex; gap:.45rem; align-items:center; flex-shrink:0; flex-wrap:wrap; }
+    .qcard-comment { font-size:.77rem; color:var(--text-muted); margin-top:.4rem; border-left:2px solid var(--border); padding-left:.6rem; font-style:italic; }
+
+    /* Checklist items */
+    .checklist-item { display:flex; align-items:center; gap:.5rem; padding:.5rem 0; border-bottom:1px solid var(--border); font-size:.875rem; }
+    .checklist-item:last-child { border-bottom:none; }
+    .check-icon { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; flex-shrink:0; }
+    .check-icon.done { background:var(--success-bg); color:var(--success); }
+    .check-icon.todo { background:var(--border); color:var(--text-muted); }
+
+    /* Grids */
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+
+    /* Panel routing */
+    .panel { display:none; }
+    .panel.active { display:block; }
+
+    /* Empty state */
+    .empty { text-align:center; padding:2.5rem 1rem; color:var(--text-muted); }
+    .empty-icon { font-size:2rem; margin-bottom:.55rem; }
+    .empty-title { font-weight:600; color:var(--text); margin-bottom:.22rem; }
+    .empty-sub { font-size:.81rem; }
+
+    /* Loading */
+    #loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,.85); display:flex; align-items:center; justify-content:center; z-index:999; }
+    .spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Misc */
+    .spacer { margin-bottom:1.25rem; }
+    .text-muted { color:var(--text-muted); }
+    .fw7 { font-weight:700; }
+
+    /* Responsive */
+    @media (max-width:700px) {
+      .sidebar { width:195px; }
+      .main { padding:1rem; }
+      .grid-2, .grid-3 { grid-template-columns:1fr; }
+    }
+    @media (max-width:540px) {
+      #view-app.active { flex-direction:column; }
+      .sidebar { width:100%; min-height:auto; height:auto; position:static; }
+      .sidebar-nav { display:flex; flex-wrap:wrap; gap:.25rem; padding:.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ LOADING ══════════ -->
+<div id="loading-overlay"><div class="spinner"></div></div>
+
+<!-- ══════════ LANDING ══════════ -->
+<div id="view-landing" class="view">
+  <nav class="nav-bar">
+    <div class="nav-logo">📋 <span class="co-name">PY Tracker</span></div>
+    <button class="btn btn-ghost-dark" onclick="showView('login')">Sign In</button>
+  </nav>
+  <div class="hero">
+    <div class="hero-badge">AFSL Professional Year Compliance Platform</div>
+    <h1 class="hero-title">Track, Verify &amp; Approve<br><span>Professional Year Hours</span></h1>
+    <p class="hero-sub">Purpose-built for Australian AFSLs — log work and CPD hours, track competencies, get supervisor sign-off, and achieve quarterly compliance approval to the FASEA/Corporations Act PY standard.</p>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+      <button class="btn btn-primary" onclick="showView('login')">Get Started →</button>
+      <button class="btn btn-ghost-dark" onclick="showView('setup')">Setup Guide</button>
+    </div>
+    <div class="role-cards">
+      <div class="role-card"><div class="icon">🎓</div><div class="rtitle">PY Candidate</div><div class="rdesc">Log work &amp; CPD hours by competency each quarter</div></div>
+      <div class="role-card"><div class="icon">👔</div><div class="rtitle">Supervisor</div><div class="rdesc">Review logbooks and complete quarterly sign-off checklists</div></div>
+      <div class="role-card"><div class="icon">🏛️</div><div class="rtitle">AFSL Compliance</div><div class="rdesc">Final regulatory approval and fleet-wide oversight</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SETUP ══════════ -->
+<div id="view-setup" class="view">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#0f172a);padding:2rem;">
+    <div class="setup-card">
+      <div class="setup-title">⚙️ First-Time Setup</div>
+      <div class="setup-sub">Enter your Supabase credentials and brand details. Credentials are stored in your browser (localStorage) and only sent to your own Supabase instance. Run the SQL below in Supabase SQL Editor before signing in.</div>
+      <div id="setup-alert"></div>
+      <div class="grid-2" style="gap:.85rem;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Product Name</label>
+          <input type="text" id="s-product" class="form-input" placeholder="PY Tracker">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">AFSL Entity Name</label>
+          <input type="text" id="s-entity" class="form-input" placeholder="Banyan Securities Pty Ltd">
+        </div>
+      </div>
+      <div class="grid-2" style="gap:.85rem;margin-top:.85rem;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">AFSL Number</label>
+          <input type="text" id="s-afsl" class="form-input" placeholder="484139">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Operator / CAR Entity</label>
+          <input type="text" id="s-operator" class="form-input" placeholder="Brightday Australia">
+        </div>
+      </div>
+      <div style="margin-top:.85rem;" class="form-group">
+        <label class="form-label">Support Email</label>
+        <input type="email" id="s-email" class="form-input" placeholder="compliance@yourcompany.com.au">
+      </div>
+      <div class="section-divider">
+        <div class="section-label">Supabase Connection</div>
+        <div class="form-group">
+          <label class="form-label">Project URL</label>
+          <input type="text" id="s-url" class="form-input" placeholder="https://xxxxxxxxxxxx.supabase.co">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Anon (public) Key</label>
+          <input type="text" id="s-key" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveSetup()" style="margin-bottom:.65rem;">Save &amp; Continue →</button>
+        <button class="btn btn-outline btn-full" onclick="showView('landing')">← Back</button>
+      </div>
+      <div class="section-divider">
+        <div class="section-label">📋 Supabase SQL — run once in SQL Editor</div>
+        <div class="code-block" id="sql-block"></div>
+        <button class="btn btn-outline btn-full" onclick="copySql()">📋 Copy SQL</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="view-login" class="view">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#0f172a);padding:2rem;">
+    <div class="login-card">
+      <div class="login-logo co-name">PY Tracker</div>
+      <div class="login-title" id="auth-h">Welcome back</div>
+      <div class="login-sub" id="auth-sh">Sign in to your account</div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-in" onclick="switchTab('in')">Sign In</button>
+        <button class="auth-tab" id="tab-up" onclick="switchTab('up')">Register</button>
+      </div>
+      <div id="auth-alert"></div>
+
+      <div id="form-in">
+        <div class="form-group"><label class="form-label">Email</label>
+          <input type="email" id="in-email" class="form-input" placeholder="you@example.com"></div>
+        <div class="form-group"><label class="form-label">Password</label>
+          <input type="password" id="in-pass" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')signIn()"></div>
+        <button class="btn btn-primary btn-full" onclick="signIn()">Sign In →</button>
+      </div>
+
+      <div id="form-up" style="display:none;">
+        <div class="form-group"><label class="form-label">Full Name</label>
+          <input type="text" id="up-name" class="form-input" placeholder="Jane Smith"></div>
+        <div class="form-group"><label class="form-label">Email</label>
+          <input type="email" id="up-email" class="form-input" placeholder="you@example.com"></div>
+        <div class="form-group"><label class="form-label">Password</label>
+          <input type="password" id="up-pass" class="form-input" placeholder="Min 8 characters"></div>
+        <div class="form-group"><label class="form-label">Role</label>
+          <select id="up-role" class="form-select">
+            <option value="candidate">PY Candidate</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="compliance">AFSL Compliance</option>
+          </select></div>
+        <button class="btn btn-primary btn-full" onclick="signUp()">Create Account →</button>
+      </div>
+
+      <div class="login-footer">
+        <button class="link-btn" onclick="showView('landing')">← Home</button>
+        &nbsp;·&nbsp;
+        <button class="link-btn" onclick="showView('setup')">Setup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APP SHELL ══════════ -->
+<div id="view-app" class="view">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-logo co-name">PY Tracker</div>
+      <div class="sidebar-afsl" id="sb-afsl">Loading…</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <div class="user-av" id="u-av">?</div>
+        <div><div class="user-nm" id="u-nm">…</div><div class="user-rl" id="u-rl">…</div></div>
+      </div>
+      <button class="btn-logout" onclick="signOut()">Sign Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ══════ CANDIDATE PANELS ══════ -->
+
+    <!-- Dashboard -->
+    <div id="panel-dashboard" class="panel">
+      <div class="page-hd">
+        <div class="page-title">My Dashboard</div>
+        <div class="page-sub" id="dash-sub">Professional Year progress overview</div>
+      </div>
+      <div id="dash-targets" class="grid-2 spacer"></div>
+      <div id="dash-quarters" style="display:flex;flex-direction:column;gap:.85rem;"></div>
+    </div>
+
+    <!-- Log Work Hours -->
+    <div id="panel-log-work" class="panel">
+      <div class="page-hd">
+        <div class="page-title">Log Work Hours</div>
+        <div class="page-sub">Record professional activity entries for your logbook.</div>
+      </div>
+      <div class="card" style="max-width:600px;">
+        <div class="card-title">New Logbook Entry</div>
+        <div id="lw-alert"></div>
+        <div class="grid-2" style="gap:.85rem;margin-bottom:.85rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Date</label>
+            <input type="date" id="lw-date" class="form-input">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Quarter</label>
+            <select id="lw-quarter" class="form-select"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Name</label>
+          <input type="text" id="lw-client" class="form-input" placeholder="e.g. John Smith">
+        </div>
+        <div class="grid-2" style="gap:.85rem;margin-bottom:.85rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Task Category</label>
+            <select id="lw-category" class="form-select" onchange="populateTasks()"></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Task</label>
+            <select id="lw-task" class="form-select"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Advice Areas (hold Ctrl/Cmd to select multiple)</label>
+          <select id="lw-advice" class="form-select" multiple size="3">
+            <option value="Superannuation">Superannuation</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Investment">Investment</option>
+            <option value="Retirement Planning">Retirement Planning</option>
+            <option value="Estate Planning">Estate Planning</option>
+            <option value="Debt Management">Debt Management</option>
+            <option value="Aged Care">Aged Care</option>
+            <option value="SMSF">SMSF</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Competencies</label>
+          <div class="check-group" id="comp-pills">
+            <label class="check-pill" onclick="togglePill(this)"><input type="checkbox" value="tc"><span>TC — Technical Competence</span></label>
+            <label class="check-pill" onclick="togglePill(this)"><input type="checkbox" value="ccp"><span>CC&amp;P — Client Care &amp; Practice</span></label>
+            <label class="check-pill" onclick="togglePill(this)"><input type="checkbox" value="rccp"><span>RC&amp;CP — Regulatory Compliance</span></label>
+            <label class="check-pill" onclick="togglePill(this)"><input type="checkbox" value="pe"><span>P&amp;E — Professionalism &amp; Ethics</span></label>
+          </div>
+        </div>
+        <div class="grid-2" style="gap:.85rem;margin-bottom:.85rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Duration (hours)</label>
+            <input type="number" id="lw-hours" class="form-input" placeholder="e.g. 2.5" min="0.25" max="24" step="0.25">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Supervisor</label>
+            <input type="text" id="lw-supervisor" class="form-input" placeholder="Supervisor name">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <textarea id="lw-notes" class="form-textarea" placeholder="Additional notes…"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="logWork()">Save Entry</button>
+      </div>
+    </div>
+
+    <!-- Log Training / CPD -->
+    <div id="panel-log-cpd" class="panel">
+      <div class="page-hd">
+        <div class="page-title">Log Training / CPD</div>
+        <div class="page-sub">Record structured training and continuing professional development hours.</div>
+      </div>
+      <div class="card" style="max-width:560px;">
+        <div class="card-title">New Training Entry</div>
+        <div id="lc-alert"></div>
+        <div class="grid-2" style="gap:.85rem;margin-bottom:.85rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Date</label>
+            <input type="date" id="lc-date" class="form-input">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Quarter</label>
+            <select id="lc-quarter" class="form-select"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" id="lc-desc" class="form-input" placeholder="e.g. Kaplan Ontrack Module 1 — Financial Planning Fundamentals">
+        </div>
+        <div class="grid-2" style="gap:.85rem;margin-bottom:.85rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Provider</label>
+            <input type="text" id="lc-provider" class="form-input" placeholder="e.g. Kaplan Professional">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Hours</label>
+            <input type="number" id="lc-hours" class="form-input" placeholder="e.g. 4" min="0.25" step="0.25">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Evidence / Reference</label>
+          <input type="text" id="lc-evidence" class="form-input" placeholder="e.g. Certificate uploaded, Attendance confirmation">
+        </div>
+        <button class="btn btn-primary" onclick="logCpd()">Save Entry</button>
+      </div>
+    </div>
+
+    <!-- My Logbook -->
+    <div id="panel-my-logbook" class="panel">
+      <div class="page-hd">
+        <div class="page-title">My Logbook</div>
+        <div class="page-sub">All work activity entries.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;">
+          <div class="card-title" style="margin:0;">Work Entries</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <select id="lb-q-filter" class="form-select" style="width:auto;" onchange="loadLogbook()"></select>
+            <select id="lb-cat-filter" class="form-select" style="width:auto;" onchange="loadLogbook()">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Client</th><th>Category</th><th>Task</th><th>Competencies</th><th>Hrs</th><th>Qtr</th></tr></thead>
+            <tbody id="lb-tbody"></tbody>
+          </table>
+        </div>
+        <div id="lb-totals" style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border);font-size:.84rem;color:var(--text-muted);"></div>
+      </div>
+    </div>
+
+    <!-- My Training -->
+    <div id="panel-my-training" class="panel">
+      <div class="page-hd">
+        <div class="page-title">My Training / CPD</div>
+        <div class="page-sub">All structured training and CPD entries.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;">
+          <div class="card-title" style="margin:0;">Training Entries</div>
+          <select id="tr-q-filter" class="form-select" style="width:auto;" onchange="loadTraining()"></select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Provider</th><th>Hours</th><th>Evidence</th><th>Qtr</th></tr></thead>
+            <tbody id="tr-tbody"></tbody>
+          </table>
+        </div>
+        <div id="tr-totals" style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border);font-size:.84rem;color:var(--text-muted);"></div>
+      </div>
+    </div>
+
+    <!-- My Quarters -->
+    <div id="panel-my-quarters" class="panel">
+      <div class="page-hd">
+        <div class="page-title">My Quarters</div>
+        <div class="page-sub">Submit quarterly logbooks for supervisor review and track approvals.</div>
+      </div>
+      <div id="qtr-list" style="display:flex;flex-direction:column;gap:.85rem;"></div>
+    </div>
+
+    <!-- ══════ SUPERVISOR PANELS ══════ -->
+
+    <!-- Supervisor Dashboard -->
+    <div id="panel-sup-dash" class="panel">
+      <div class="page-hd">
+        <div class="page-title">Supervisor Dashboard</div>
+        <div class="page-sub">Candidate submissions awaiting your quarterly sign-off.</div>
+      </div>
+      <div id="sup-stats" class="stats-row"></div>
+      <div class="card">
+        <div class="card-title">Pending Quarterly Sign-offs</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Candidate</th><th>Quarter</th><th>Work Hrs</th><th>CPD Hrs</th><th>Submitted</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sup-pending-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Candidates -->
+    <div id="panel-sup-candidates" class="panel">
+      <div class="page-hd">
+        <div class="page-title">All Candidates</div>
+        <div class="page-sub">Hour totals and PY progress for each candidate.</div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Candidate</th><th>Email</th><th>Work Hrs</th><th>CPD Hrs</th><th>% Work</th><th>% CPD</th><th>Qtrs Done</th><th></th></tr></thead>
+            <tbody id="cands-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supervisor Review -->
+    <div id="panel-sup-review" class="panel">
+      <div class="page-hd">
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <button class="btn btn-outline" onclick="navTo('sup-dash')">← Back</button>
+          <div>
+            <div class="page-title" id="sr-title">Review</div>
+            <div class="page-sub" id="sr-sub"></div>
+          </div>
+        </div>
+      </div>
+      <div id="sr-stats" class="stats-row"></div>
+      <div class="grid-2 spacer" style="align-items:start;">
+        <div class="card">
+          <div class="card-title">Work Hour Entries</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Client</th><th>Task</th><th>Comp.</th><th>Hrs</th></tr></thead>
+              <tbody id="sr-work-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Training / CPD Entries</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Description</th><th>Provider</th><th>Hrs</th></tr></thead>
+              <tbody id="sr-cpd-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="sr-decision-card">
+        <div class="card-title">Quarterly Sign-off Checklist &amp; Decision</div>
+        <div id="sr-decision-content"></div>
+      </div>
+    </div>
+
+    <!-- ══════ COMPLIANCE PANELS ══════ -->
+
+    <!-- Compliance Dashboard -->
+    <div id="panel-comp-dash" class="panel">
+      <div class="page-hd">
+        <div class="page-title">AFSL Compliance Dashboard</div>
+        <div class="page-sub">Supervisor-signed quarters awaiting final regulatory approval.</div>
+      </div>
+      <div id="comp-stats" class="stats-row"></div>
+      <div class="card">
+        <div class="card-title">Awaiting Final Approval</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Candidate</th><th>Quarter</th><th>Work Hrs</th><th>CPD Hrs</th><th>Sup. Signed</th><th>Status</th><th></th></tr></thead>
+            <tbody id="comp-pending-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance History -->
+    <div id="panel-comp-history" class="panel">
+      <div class="page-hd">
+        <div class="page-title">All Submissions</div>
+        <div class="page-sub">Complete history with filters.</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:.65rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <select id="hist-q" class="form-select" style="width:auto;" onchange="loadHistory()">
+            <option value="">All Quarters</option>
+            <option value="1">Q1</option><option value="2">Q2</option>
+            <option value="3">Q3</option><option value="4">Q4</option>
+          </select>
+          <select id="hist-s" class="form-select" style="width:auto;" onchange="loadHistory()">
+            <option value="">All Statuses</option>
+            <option value="submitted">Submitted</option>
+            <option value="supervisor_approved">Sup. Approved</option>
+            <option value="compliance_approved">Fully Approved</option>
+            <option value="supervisor_rejected">Sup. Rejected</option>
+            <option value="compliance_rejected">Comp. Rejected</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Candidate</th><th>Qtr</th><th>Work Hrs</th><th>CPD Hrs</th><th>Status</th><th>Submitted</th><th></th></tr></thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compliance Review -->
+    <div id="panel-comp-review" class="panel">
+      <div class="page-hd">
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <button class="btn btn-outline" onclick="navTo('comp-dash')">← Back</button>
+          <div>
+            <div class="page-title" id="cr-title">Final Review</div>
+            <div class="page-sub" id="cr-sub"></div>
+          </div>
+        </div>
+      </div>
+      <div id="cr-stats" class="stats-row"></div>
+      <div class="card spacer">
+        <div class="card-title">Supervisor Sign-off Notes</div>
+        <div id="cr-sup-notes" style="font-size:.875rem;color:var(--text-muted);"></div>
+      </div>
+      <div class="grid-2 spacer" style="align-items:start;">
+        <div class="card">
+          <div class="card-title">Work Hour Entries</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Client</th><th>Task</th><th>Hrs</th></tr></thead>
+              <tbody id="cr-work-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Training / CPD</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Description</th><th>Hrs</th></tr></thead>
+              <tbody id="cr-cpd-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Final Decision</div>
+        <div id="cr-decision-content"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ════════ SCRIPT ════════ -->
+<script>
+'use strict';
+
+// ─── PY CONSTANTS ─────────────────────────────────────────────────────────────
+
+const PY_WORK_TARGET = 1500;  // total work hours for full PY
+const PY_CPD_TARGET  = 100;   // total CPD hours
+const PY_QUARTERS = [
+  { q:1, title:'Client Observations & Support',  supervision:'Direct',   target:375 },
+  { q:2, title:'Supervised Client Engagement',   supervision:'Direct',   target:375 },
+  { q:3, title:'Indirect Supervision',           supervision:'Indirect', target:375 },
+  { q:4, title:'Indirect Supervision',           supervision:'Indirect', target:375 },
+];
+
+const TASK_CATEGORIES = {
+  'Administration':             ['Application administration and implementation of advice','Client administration','Data entry / collection','Ethical dilemma preparation','Meeting with supervisor','New client notification','Portfolio / account management','Other'],
+  'Client meeting preparation': ['Advice proposal','Create meeting documentation','Create meeting presentation','Other'],
+  'Documentation':              ['Create ROA / SOA / No Advice','Fact Find','Post meeting documentation / file notes','Other'],
+  'New client engagement':      ['Lead supervised client meeting','Observe client meeting','Unsupervised client meeting','Other'],
+  'Review client engagement':   ['Lead supervised client meeting','Observe client meetings','Unsupervised client meeting','Other'],
+  'Strategy':                   ['Internal advice strategy discussion','Model strategies and research','Needs analysis','Other'],
+  'Paraplanning':               ['Paraplanning support'],
+};
+
+const COMP_LABELS = {
+  tc:'TC', ccp:'CC&P', rccp:'RC&CP', pe:'P&E'
+};
+
+// ─── SQL SCHEMA ───────────────────────────────────────────────────────────────
+
+const SCHEMA_SQL = `-- PY Tracker — Supabase Schema
+-- Run once in SQL Editor (supabase.com → your project → SQL Editor)
+-- ─────────────────────────────────────────────────────────
+
+-- TABLES
+
+create table if not exists public.profiles (
+  id         uuid references auth.users(id) on delete cascade primary key,
+  email      text,
+  full_name  text,
+  role       text check (role in ('candidate','supervisor','compliance')),
+  created_at timestamptz default now()
+);
+
+create table if not exists public.logbook_entries (
+  id            uuid default gen_random_uuid() primary key,
+  candidate_id  uuid references public.profiles(id) on delete cascade not null,
+  log_date      date not null,
+  quarter       int  not null check (quarter between 1 and 4),
+  client        text not null,
+  task_category text not null,
+  task          text not null,
+  advice_areas  text[] default '{}',
+  competencies  text[] default '{}',
+  duration      numeric(5,2) not null check (duration > 0),
+  supervisor_name text,
+  notes         text,
+  created_at    timestamptz default now()
+);
+
+create table if not exists public.training_entries (
+  id           uuid default gen_random_uuid() primary key,
+  candidate_id uuid references public.profiles(id) on delete cascade not null,
+  log_date     date not null,
+  quarter      int  not null check (quarter between 1 and 4),
+  description  text not null,
+  provider     text,
+  hours        numeric(5,2) not null check (hours > 0),
+  evidence     text,
+  created_at   timestamptz default now()
+);
+
+create table if not exists public.quarter_submissions (
+  id                     uuid default gen_random_uuid() primary key,
+  candidate_id           uuid references public.profiles(id) on delete cascade not null,
+  quarter                int  not null check (quarter between 1 and 4),
+  status                 text default 'draft' check (status in (
+                           'draft','submitted',
+                           'supervisor_approved','supervisor_rejected',
+                           'compliance_approved','compliance_rejected'
+                         )),
+  logbook_signed         boolean default false,
+  reflection_complete    boolean default false,
+  ethical_dilemmas       boolean default false,
+  supervisor_comment     text,
+  supervisor_reviewed_at timestamptz,
+  compliance_comment     text,
+  compliance_reviewed_at timestamptz,
+  submitted_at           timestamptz,
+  created_at             timestamptz default now(),
+  unique (candidate_id, quarter)
+);
+
+-- RLS
+
+alter table public.profiles           enable row level security;
+alter table public.logbook_entries    enable row level security;
+alter table public.training_entries   enable row level security;
+alter table public.quarter_submissions enable row level security;
+
+create policy "profiles_read"   on public.profiles for select using (auth.role()='authenticated');
+create policy "profiles_insert" on public.profiles for insert with check (auth.uid()=id);
+create policy "profiles_update" on public.profiles for update using (auth.uid()=id);
+
+create policy "lb_insert" on public.logbook_entries for insert with check (auth.uid()=candidate_id);
+create policy "lb_select" on public.logbook_entries for select using (
+  auth.uid()=candidate_id or
+  exists(select 1 from public.profiles where id=auth.uid() and role in ('supervisor','compliance'))
+);
+create policy "lb_delete" on public.logbook_entries for delete using (auth.uid()=candidate_id);
+
+create policy "tr_insert" on public.training_entries for insert with check (auth.uid()=candidate_id);
+create policy "tr_select" on public.training_entries for select using (
+  auth.uid()=candidate_id or
+  exists(select 1 from public.profiles where id=auth.uid() and role in ('supervisor','compliance'))
+);
+create policy "tr_delete" on public.training_entries for delete using (auth.uid()=candidate_id);
+
+create policy "qs_insert" on public.quarter_submissions for insert with check (auth.uid()=candidate_id);
+create policy "qs_select" on public.quarter_submissions for select using (
+  auth.uid()=candidate_id or
+  exists(select 1 from public.profiles where id=auth.uid() and role in ('supervisor','compliance'))
+);
+create policy "qs_update" on public.quarter_submissions for update using (
+  auth.uid()=candidate_id or
+  exists(select 1 from public.profiles where id=auth.uid() and role in ('supervisor','compliance'))
+);
+
+-- AUTO-CREATE PROFILE ON SIGNUP
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  insert into public.profiles(id,email,full_name,role)
+  values(new.id,new.email,
+    coalesce(new.raw_user_meta_data->>'full_name',''),
+    coalesce(new.raw_user_meta_data->>'role','candidate'))
+  on conflict(id) do nothing;
+  return new;
+end;
+$$;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- INDEXES
+
+create index if not exists idx_lb_cand_qtr on public.logbook_entries(candidate_id,quarter);
+create index if not exists idx_tr_cand_qtr on public.training_entries(candidate_id,quarter);
+create index if not exists idx_qs_status   on public.quarter_submissions(status);`;
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+
+let sb = null, me = null, profile = null;
+let cfg = {};  // { productName, entity, afsl, operator, supportEmail }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('sql-block').textContent = SCHEMA_SQL;
+
+  // Set today's date on forms
+  const today = new Date().toISOString().split('T')[0];
+  ['lw-date','lc-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+
+  // Populate category select
+  const catSel = document.getElementById('lw-category');
+  catSel.innerHTML = Object.keys(TASK_CATEGORIES).map(c => `<option value="${c}">${c}</option>`).join('');
+  populateTasks();
+
+  // Populate category filter
+  const catFilter = document.getElementById('lb-cat-filter');
+  catFilter.innerHTML = '<option value="">All Categories</option>' +
+    Object.keys(TASK_CATEGORIES).map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // Load config
+  cfg = loadCfg();
+  applyCfg();
+
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+
+  // Pre-fill setup form
+  document.getElementById('s-product').value  = cfg.productName  || '';
+  document.getElementById('s-entity').value   = cfg.entity       || '';
+  document.getElementById('s-afsl').value     = cfg.afsl         || '';
+  document.getElementById('s-operator').value = cfg.operator     || '';
+  document.getElementById('s-email').value    = cfg.supportEmail || '';
+  if (url) document.getElementById('s-url').value = url;
+  if (key) document.getElementById('s-key').value = key;
+
+  if (!url || !key) { hide(); showView('landing'); return; }
+
+  try {
+    sb = window.supabase.createClient(url, key);
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { await boot(session.user); }
+    else { hide(); showView('landing'); }
+  } catch(e) {
+    hide(); showView('setup');
+    alertEl('setup-alert', 'Cannot connect to Supabase — check credentials.', 'error');
+  }
+});
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+function loadCfg() {
+  return {
+    productName:  localStorage.getItem('cfg_product')  || 'PY Tracker',
+    entity:       localStorage.getItem('cfg_entity')   || '',
+    afsl:         localStorage.getItem('cfg_afsl')     || '',
+    operator:     localStorage.getItem('cfg_operator') || '',
+    supportEmail: localStorage.getItem('cfg_email')    || '',
+  };
+}
+
+function applyCfg() {
+  document.querySelectorAll('.co-name').forEach(el => el.textContent = cfg.productName || 'PY Tracker');
+  const afslLine = cfg.entity
+    ? `${cfg.entity}${cfg.afsl ? ' — AFSL ' + cfg.afsl : ''}`
+    : 'AFSL Professional Year Platform';
+  const sb_afsl = document.getElementById('sb-afsl');
+  if (sb_afsl) sb_afsl.textContent = afslLine;
+  document.title = cfg.productName || 'PY Tracker';
+}
+
+function saveSetup() {
+  const url = document.getElementById('s-url').value.trim();
+  const key = document.getElementById('s-key').value.trim();
+  if (!url || !key) { alertEl('setup-alert','Both URL and Key are required.','error'); return; }
+
+  localStorage.setItem('sb_url',         url);
+  localStorage.setItem('sb_key',         key);
+  localStorage.setItem('cfg_product',    document.getElementById('s-product').value.trim()  || 'PY Tracker');
+  localStorage.setItem('cfg_entity',     document.getElementById('s-entity').value.trim());
+  localStorage.setItem('cfg_afsl',       document.getElementById('s-afsl').value.trim());
+  localStorage.setItem('cfg_operator',   document.getElementById('s-operator').value.trim());
+  localStorage.setItem('cfg_email',      document.getElementById('s-email').value.trim());
+
+  cfg = loadCfg();
+  applyCfg();
+  sb = window.supabase.createClient(url, key);
+  alertEl('setup-alert','Saved — redirecting to login…','success');
+  setTimeout(() => showView('login'), 1400);
+}
+
+function copySql() {
+  navigator.clipboard.writeText(SCHEMA_SQL)
+    .then(() => alert('SQL copied!'))
+    .catch(() => alert('Copy failed — select the text above and copy manually.'));
+}
+
+// ─── VIEW HELPERS ─────────────────────────────────────────────────────────────
+
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+}
+function show() { document.getElementById('loading-overlay').style.display = 'flex'; }
+function hide() { document.getElementById('loading-overlay').style.display = 'none'; }
+
+function navTo(panelId) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const p = document.getElementById('panel-' + panelId);
+  if (p) p.classList.add('active');
+  const b = document.querySelector(`[data-panel="${panelId}"]`);
+  if (b) b.classList.add('active');
+  // Trigger data load
+  const loaders = {
+    'dashboard':       loadDashboard,
+    'log-work':        setupWorkForm,
+    'log-cpd':         setupCpdForm,
+    'my-logbook':      loadLogbook,
+    'my-training':     loadTraining,
+    'my-quarters':     loadMyQuarters,
+    'sup-dash':        loadSupDash,
+    'sup-candidates':  loadAllCandidates,
+    'comp-dash':       loadCompDash,
+    'comp-history':    loadHistory,
+  };
+  if (loaders[panelId]) loaders[panelId]();
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+function switchTab(t) {
+  ['in','up'].forEach(x => {
+    document.getElementById('tab-' + x).classList.toggle('active', x === t);
+    document.getElementById('form-' + x).style.display = x === t ? 'block' : 'none';
+  });
+  document.getElementById('auth-alert').innerHTML = '';
+  document.getElementById('auth-h').textContent  = t === 'in' ? 'Welcome back' : 'Create account';
+  document.getElementById('auth-sh').textContent = t === 'in' ? 'Sign in to continue' : 'Register for access';
+}
+
+async function signIn() {
+  if (!sb) { alertEl('auth-alert','Not configured — go to Setup first.','error'); return; }
+  const email = document.getElementById('in-email').value.trim();
+  const pass  = document.getElementById('in-pass').value;
+  if (!email || !pass) { alertEl('auth-alert','Enter email and password.','error'); return; }
+  show();
+  const { data, error } = await sb.auth.signInWithPassword({ email, password:pass });
+  if (error) { hide(); alertEl('auth-alert', error.message, 'error'); return; }
+  await boot(data.user);
+}
+
+async function signUp() {
+  if (!sb) { alertEl('auth-alert','Not configured — go to Setup first.','error'); return; }
+  const name  = document.getElementById('up-name').value.trim();
+  const email = document.getElementById('up-email').value.trim();
+  const pass  = document.getElementById('up-pass').value;
+  const role  = document.getElementById('up-role').value;
+  if (!name || !email || !pass) { alertEl('auth-alert','Fill all fields.','error'); return; }
+  if (pass.length < 8) { alertEl('auth-alert','Password must be at least 8 characters.','error'); return; }
+  show();
+  const { data, error } = await sb.auth.signUp({ email, password:pass, options: { data: { full_name:name, role } } });
+  if (error) { hide(); alertEl('auth-alert', error.message, 'error'); return; }
+  await new Promise(r => setTimeout(r, 900));
+  await boot(data.user);
+}
+
+async function boot(user) {
+  const { data: p, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (error || !p) { hide(); showView('login'); alertEl('auth-alert','Profile not found.','error'); return; }
+  me = user; profile = p;
+  buildShell();
+  showView('app');
+  hide();
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  me = null; profile = null;
+  showView('landing');
+}
+
+// ─── APP SHELL ────────────────────────────────────────────────────────────────
+
+function buildShell() {
+  const r  = profile.role;
+  const nm = profile.full_name || profile.email || '?';
+  document.getElementById('u-nm').textContent = nm;
+  document.getElementById('u-rl').textContent = roleLabel(r);
+  document.getElementById('u-av').textContent = nm[0].toUpperCase();
+  applyCfg();
+
+  const navDefs = {
+    candidate: [
+      { panel:'dashboard',   icon:'📊', label:'Dashboard' },
+      { panel:'log-work',    icon:'➕', label:'Log Work Hours' },
+      { panel:'log-cpd',     icon:'📚', label:'Log Training / CPD' },
+      { panel:'my-logbook',  icon:'📋', label:'My Logbook' },
+      { panel:'my-training', icon:'🎓', label:'My Training' },
+      { panel:'my-quarters', icon:'📅', label:'My Quarters' },
+    ],
+    supervisor: [
+      { panel:'sup-dash',       icon:'🏠', label:'Dashboard' },
+      { panel:'sup-candidates', icon:'👥', label:'All Candidates' },
+    ],
+    compliance: [
+      { panel:'comp-dash',    icon:'🏠', label:'Dashboard' },
+      { panel:'comp-history', icon:'📊', label:'All Submissions' },
+    ],
+  };
+
+  document.getElementById('sidebar-nav').innerHTML = (navDefs[r] || []).map(n =>
+    `<button class="nav-btn" data-panel="${n.panel}" onclick="navTo('${n.panel}')">
+      <span class="nav-icon">${n.icon}</span>${n.label}
+    </button>`
+  ).join('');
+
+  const defaultPanel = { candidate:'dashboard', supervisor:'sup-dash', compliance:'comp-dash' }[r];
+  navTo(defaultPanel);
+}
+
+function roleLabel(r) {
+  return { candidate:'PY Candidate', supervisor:'Supervisor', compliance:'AFSL Compliance' }[r] || r;
+}
+
+// ─── FORM SETUP ───────────────────────────────────────────────────────────────
+
+function populateTasks() {
+  const cat = document.getElementById('lw-category').value;
+  const tasks = TASK_CATEGORIES[cat] || [];
+  document.getElementById('lw-task').innerHTML = tasks.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function setupWorkForm() {
+  populateQuarterSelect('lw-quarter');
+}
+function setupCpdForm() {
+  populateQuarterSelect('lc-quarter');
+}
+
+function populateQuarterSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = PY_QUARTERS.map(q =>
+    `<option value="${q.q}">Q${q.q} — ${q.title}</option>`
+  ).join('');
+}
+
+function togglePill(label) {
+  const cb = label.querySelector('input');
+  cb.checked = !cb.checked;
+  label.classList.toggle('checked', cb.checked);
+}
+
+function getCheckedComps() {
+  return [...document.querySelectorAll('#comp-pills input:checked')].map(el => el.value);
+}
+
+function clearPills() {
+  document.querySelectorAll('#comp-pills .check-pill').forEach(p => {
+    p.querySelector('input').checked = false;
+    p.classList.remove('checked');
+  });
+}
+
+// ─── CANDIDATE: LOG WORK ──────────────────────────────────────────────────────
+
+async function logWork() {
+  const date  = document.getElementById('lw-date').value;
+  const qtr   = parseInt(document.getElementById('lw-quarter').value);
+  const client = document.getElementById('lw-client').value.trim();
+  const cat   = document.getElementById('lw-category').value;
+  const task  = document.getElementById('lw-task').value;
+  const hours = parseFloat(document.getElementById('lw-hours').value);
+  const supNm = document.getElementById('lw-supervisor').value.trim();
+  const notes = document.getElementById('lw-notes').value.trim();
+  const comps = getCheckedComps();
+  const adviceOpts = document.getElementById('lw-advice');
+  const advice = [...adviceOpts.selectedOptions].map(o => o.value);
+
+  if (!date || !client || !cat || !task || !hours || hours <= 0)
+    return alertEl('lw-alert','Fill all required fields.','error');
+
+  // Block if quarter submitted
+  const locked = await isQuarterLocked(qtr);
+  if (locked) return alertEl('lw-alert',`Q${qtr} has been submitted — add hours after review.`,'warn');
+
+  const { error } = await sb.from('logbook_entries').insert({
+    candidate_id:me.id, log_date:date, quarter:qtr, client, task_category:cat,
+    task, advice_areas:advice, competencies:comps, duration:hours,
+    supervisor_name:supNm||null, notes:notes||null
+  });
+  if (error) return alertEl('lw-alert', error.message, 'error');
+
+  alertEl('lw-alert', `✓ ${hours}h saved — ${cat} / ${task} for ${client} (Q${qtr})`, 'success');
+  document.getElementById('lw-client').value   = '';
+  document.getElementById('lw-hours').value    = '';
+  document.getElementById('lw-notes').value    = '';
+  document.getElementById('lw-supervisor').value = '';
+  clearPills();
+  [...document.getElementById('lw-advice').options].forEach(o => o.selected = false);
+}
+
+// ─── CANDIDATE: LOG CPD ───────────────────────────────────────────────────────
+
+async function logCpd() {
+  const date  = document.getElementById('lc-date').value;
+  const qtr   = parseInt(document.getElementById('lc-quarter').value);
+  const desc  = document.getElementById('lc-desc').value.trim();
+  const prov  = document.getElementById('lc-provider').value.trim();
+  const hours = parseFloat(document.getElementById('lc-hours').value);
+  const evid  = document.getElementById('lc-evidence').value.trim();
+
+  if (!date || !desc || !hours || hours <= 0)
+    return alertEl('lc-alert','Fill all required fields.','error');
+
+  const locked = await isQuarterLocked(qtr);
+  if (locked) return alertEl('lc-alert',`Q${qtr} has been submitted — add hours after review.`,'warn');
+
+  const { error } = await sb.from('training_entries').insert({
+    candidate_id:me.id, log_date:date, quarter:qtr,
+    description:desc, provider:prov||null, hours, evidence:evid||null
+  });
+  if (error) return alertEl('lc-alert', error.message, 'error');
+
+  alertEl('lc-alert', `✓ ${hours}h CPD saved — ${desc} (Q${qtr})`, 'success');
+  document.getElementById('lc-desc').value     = '';
+  document.getElementById('lc-provider').value = '';
+  document.getElementById('lc-hours').value    = '';
+  document.getElementById('lc-evidence').value = '';
+}
+
+async function isQuarterLocked(qtr) {
+  const { data } = await sb.from('quarter_submissions')
+    .select('status').eq('candidate_id',me.id).eq('quarter',qtr).maybeSingle();
+  return data && !['draft','supervisor_rejected','compliance_rejected'].includes(data.status);
+}
+
+// ─── CANDIDATE: DASHBOARD ─────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  const [{ data:work }, { data:cpd }, { data:subs }] = await Promise.all([
+    sb.from('logbook_entries').select('quarter,duration').eq('candidate_id',me.id),
+    sb.from('training_entries').select('quarter,hours').eq('candidate_id',me.id),
+    sb.from('quarter_submissions').select('*').eq('candidate_id',me.id),
+  ]);
+
+  const totalWork = (work||[]).reduce((s,l) => s + Number(l.duration), 0);
+  const totalCpd  = (cpd||[]).reduce((s,l) => s + Number(l.hours), 0);
+  const subMap    = {};
+  (subs||[]).forEach(s => subMap[s.quarter] = s);
+
+  // Targets section
+  const workPct = Math.min(100, Math.round(totalWork / PY_WORK_TARGET * 100));
+  const cpdPct  = Math.min(100, Math.round(totalCpd  / PY_CPD_TARGET  * 100));
+
+  document.getElementById('dash-targets').innerHTML = `
+    <div class="target-card">
+      <div class="target-title">🕐 Work Hours (PY Total)</div>
+      <div class="target-big">${totalWork.toFixed(1)} <span>/ ${PY_WORK_TARGET} hours</span></div>
+      <div class="prog-wrap"><div class="prog-fill ${workPct>=100?'green':''}" style="width:${workPct}%"></div></div>
+      <div class="prog-label"><span>${workPct}% complete</span><span>${Math.max(0,PY_WORK_TARGET-totalWork).toFixed(1)}h remaining</span></div>
+    </div>
+    <div class="target-card">
+      <div class="target-title">📚 Training / CPD Hours</div>
+      <div class="target-big">${totalCpd.toFixed(1)} <span>/ ${PY_CPD_TARGET} hours</span></div>
+      <div class="prog-wrap"><div class="prog-fill ${cpdPct>=100?'green':''}" style="width:${cpdPct}%"></div></div>
+      <div class="prog-label"><span>${cpdPct}% complete</span><span>${Math.max(0,PY_CPD_TARGET-totalCpd).toFixed(1)}h remaining</span></div>
+    </div>`;
+
+  // Quarter cards
+  const qHours = {};
+  (work||[]).forEach(l => { qHours[l.quarter] = (qHours[l.quarter]||0) + Number(l.duration); });
+  const qCpd = {};
+  (cpd||[]).forEach(l => { qCpd[l.quarter] = (qCpd[l.quarter]||0) + Number(l.hours); });
+
+  document.getElementById('dash-quarters').innerHTML = PY_QUARTERS.map(qd => {
+    const sub    = subMap[qd.q] || {};
+    const status = sub.status || 'draft';
+    const wh     = (qHours[qd.q] || 0).toFixed(1);
+    const ch     = (qCpd[qd.q]   || 0).toFixed(1);
+    const pct    = Math.min(100, Math.round((qHours[qd.q]||0) / qd.target * 100));
+    return `<div class="qcard">
+      <div class="qcard-info">
+        <div class="qcard-title">Q${qd.q} — ${qd.title}</div>
+        <div class="qcard-meta">${qd.supervision} supervision · Target: ${qd.target}h work</div>
+        <div class="prog-wrap" style="margin:.4rem 0 .2rem;"><div class="prog-fill ${pct>=100?'green':''}" style="width:${pct}%"></div></div>
+        <div class="qcard-checklist">Work: ${wh}h &nbsp;·&nbsp; CPD: ${ch}h &nbsp;·&nbsp; ${pct}% of quarter target</div>
+      </div>
+      <div class="qcard-actions">
+        <span class="badge badge-${status}">${statusLabel(status)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── CANDIDATE: MY LOGBOOK ────────────────────────────────────────────────────
+
+async function loadLogbook() {
+  const qSel = document.getElementById('lb-q-filter');
+  if (qSel.options.length === 0)
+    qSel.innerHTML = '<option value="">All Quarters</option>' +
+      PY_QUARTERS.map(q => `<option value="${q.q}">Q${q.q}</option>`).join('');
+
+  const qf = qSel.value;
+  const cf = document.getElementById('lb-cat-filter').value;
+
+  let q = sb.from('logbook_entries').select('*').eq('candidate_id',me.id).order('log_date',{ascending:false});
+  if (qf) q = q.eq('quarter', parseInt(qf));
+  if (cf) q = q.eq('task_category', cf);
+  const { data: logs } = await q;
+
+  const tbody = document.getElementById('lb-tbody');
+  if (!logs?.length) { tbody.innerHTML = emptyRow(7,'📋','No logbook entries','Log work hours using the menu'); return; }
+
+  tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td>${l.log_date}</td>
+      <td>${esc(l.client)}</td>
+      <td style="max-width:140px;">${esc(l.task_category)}</td>
+      <td style="max-width:180px;">${esc(l.task)}</td>
+      <td>${(l.competencies||[]).map(c => `<span class="badge badge-${c}">${COMP_LABELS[c]||c}</span>`).join(' ')}</td>
+      <td><strong>${l.duration}h</strong></td>
+      <td>Q${l.quarter}</td>
+    </tr>`).join('');
+
+  const total = logs.reduce((s,l) => s + Number(l.duration), 0);
+  document.getElementById('lb-totals').innerHTML =
+    `<span>Total: <strong>${total.toFixed(1)}h</strong></span>
+     <span>Entries: <strong>${logs.length}</strong></span>
+     <span>% of PY: <strong>${Math.round(total/PY_WORK_TARGET*100)}%</strong></span>`;
+}
+
+// ─── CANDIDATE: MY TRAINING ───────────────────────────────────────────────────
+
+async function loadTraining() {
+  const qSel = document.getElementById('tr-q-filter');
+  if (qSel.options.length === 0)
+    qSel.innerHTML = '<option value="">All Quarters</option>' +
+      PY_QUARTERS.map(q => `<option value="${q.q}">Q${q.q}</option>`).join('');
+
+  const qf = qSel.value;
+  let q = sb.from('training_entries').select('*').eq('candidate_id',me.id).order('log_date',{ascending:false});
+  if (qf) q = q.eq('quarter', parseInt(qf));
+  const { data: recs } = await q;
+
+  const tbody = document.getElementById('tr-tbody');
+  if (!recs?.length) { tbody.innerHTML = emptyRow(6,'📚','No training entries','Log CPD hours using the menu'); return; }
+
+  tbody.innerHTML = recs.map(r => `
+    <tr>
+      <td>${r.log_date}</td>
+      <td style="max-width:260px;">${esc(r.description)}</td>
+      <td>${esc(r.provider||'—')}</td>
+      <td><strong>${r.hours}h</strong></td>
+      <td>${esc(r.evidence||'—')}</td>
+      <td>Q${r.quarter}</td>
+    </tr>`).join('');
+
+  const total = recs.reduce((s,r) => s + Number(r.hours), 0);
+  document.getElementById('tr-totals').innerHTML =
+    `Total CPD: <strong>${total.toFixed(1)}h</strong> of ${PY_CPD_TARGET}h (${Math.round(total/PY_CPD_TARGET*100)}%)`;
+}
+
+// ─── CANDIDATE: MY QUARTERS ───────────────────────────────────────────────────
+
+async function loadMyQuarters() {
+  const [{ data:work }, { data:cpd }, { data:subs }] = await Promise.all([
+    sb.from('logbook_entries').select('quarter,duration').eq('candidate_id',me.id),
+    sb.from('training_entries').select('quarter,hours').eq('candidate_id',me.id),
+    sb.from('quarter_submissions').select('*').eq('candidate_id',me.id),
+  ]);
+
+  const subMap = {};
+  (subs||[]).forEach(s => subMap[s.quarter] = s);
+  const wMap = {}, cMap = {};
+  (work||[]).forEach(l => { wMap[l.quarter] = (wMap[l.quarter]||0) + Number(l.duration); });
+  (cpd||[]).forEach(l  => { cMap[l.quarter] = (cMap[l.quarter]||0) + Number(l.hours); });
+
+  document.getElementById('qtr-list').innerHTML = PY_QUARTERS.map(qd => {
+    const sub    = subMap[qd.q] || {};
+    const status = sub.status || 'draft';
+    const wh     = (wMap[qd.q] || 0).toFixed(1);
+    const ch     = (cMap[qd.q] || 0).toFixed(1);
+    const canSubmit = ['draft','supervisor_rejected','compliance_rejected'].includes(status);
+    let comments = '';
+    if (sub.supervisor_comment)  comments += `<div class="qcard-comment">💬 Supervisor: ${esc(sub.supervisor_comment)}</div>`;
+    if (sub.compliance_comment)  comments += `<div class="qcard-comment">🏛️ Compliance: ${esc(sub.compliance_comment)}</div>`;
+    return `<div class="qcard">
+      <div class="qcard-info">
+        <div class="qcard-title">Q${qd.q} — ${qd.title}</div>
+        <div class="qcard-meta">${qd.supervision} supervision · Work: ${wh}h · CPD: ${ch}h</div>
+        ${comments}
+      </div>
+      <div class="qcard-actions">
+        <span class="badge badge-${status}">${statusLabel(status)}</span>
+        ${canSubmit ? `<button class="btn btn-sm btn-blue" onclick="submitQuarter(${qd.q})">Submit →</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function submitQuarter(qtr) {
+  if (!confirm(`Submit Q${qtr} for supervisor review? You won't be able to add hours until it's reviewed.`)) return;
+  const { data:ex } = await sb.from('quarter_submissions')
+    .select('id').eq('candidate_id',me.id).eq('quarter',qtr).maybeSingle();
+  const payload = { candidate_id:me.id, quarter:qtr, status:'submitted', submitted_at:new Date().toISOString() };
+  let err;
+  if (ex) {
+    ({ error:err } = await sb.from('quarter_submissions').update(payload).eq('id',ex.id));
+  } else {
+    ({ error:err } = await sb.from('quarter_submissions').insert(payload));
+  }
+  if (err) return alert('Error: ' + err.message);
+  loadMyQuarters();
+}
+
+// ─── SUPERVISOR: DASHBOARD ────────────────────────────────────────────────────
+
+async function loadSupDash() {
+  const { data:subs } = await sb.from('quarter_submissions')
+    .select('*, profiles:candidate_id(full_name,email)')
+    .order('submitted_at',{ascending:false});
+
+  const all     = subs || [];
+  const pending = all.filter(s => s.status === 'submitted');
+
+  document.getElementById('sup-stats').innerHTML = statsHtml([
+    ['Pending Sign-off', pending.length, 'awaiting review'],
+    ['Approved by You',  all.filter(s=>s.status==='supervisor_approved').length, ''],
+    ['Rejected by You',  all.filter(s=>s.status==='supervisor_rejected').length, ''],
+  ]);
+
+  const cids  = [...new Set(all.map(s=>s.candidate_id))];
+  const hmap  = cids.length ? await buildHMap(cids) : {};
+
+  document.getElementById('sup-pending-tbody').innerHTML = all.length
+    ? all.map(s => {
+        const h = hmap[`${s.candidate_id}-${s.quarter}`] || {work:0,cpd:0};
+        const name = s.profiles?.full_name || s.profiles?.email || '—';
+        const reviewable = s.status === 'submitted';
+        return `<tr>
+          <td>${esc(name)}</td><td>Q${s.quarter}</td>
+          <td>${h.work.toFixed(1)}h</td><td>${h.cpd.toFixed(1)}h</td>
+          <td>${s.submitted_at ? fmtDate(s.submitted_at) : '—'}</td>
+          <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+          <td>${reviewable ? `<button class="btn btn-sm btn-blue" onclick="openSupReview('${s.id}','${s.candidate_id}',${s.quarter})">Review →</button>` : '—'}</td>
+        </tr>`;
+      }).join('')
+    : emptyRow(7,'✅','No submissions yet','');
+}
+
+async function loadAllCandidates() {
+  const [{ data:cands }, { data:work }, { data:cpd }, { data:subs }] = await Promise.all([
+    sb.from('profiles').select('*').eq('role','candidate').order('full_name'),
+    sb.from('logbook_entries').select('candidate_id,duration'),
+    sb.from('training_entries').select('candidate_id,hours'),
+    sb.from('quarter_submissions').select('candidate_id,status'),
+  ]);
+
+  const tbody = document.getElementById('cands-tbody');
+  if (!cands?.length) { tbody.innerHTML = emptyRow(8,'👥','No candidates yet',''); return; }
+
+  tbody.innerHTML = cands.map(c => {
+    const wh = (work||[]).filter(l=>l.candidate_id===c.id).reduce((s,l)=>s+Number(l.duration),0);
+    const ch = (cpd||[]).filter(l=>l.candidate_id===c.id).reduce((s,l)=>s+Number(l.hours),0);
+    const done = (subs||[]).filter(s=>s.candidate_id===c.id && s.status==='compliance_approved').length;
+    return `<tr>
+      <td>${esc(c.full_name||'—')}</td><td>${esc(c.email)}</td>
+      <td>${wh.toFixed(1)}h</td><td>${ch.toFixed(1)}h</td>
+      <td>${Math.round(wh/PY_WORK_TARGET*100)}%</td>
+      <td>${Math.round(ch/PY_CPD_TARGET*100)}%</td>
+      <td>${done}/4</td>
+      <td><button class="btn btn-sm btn-outline" onclick="viewCandSummary('${c.id}','${esc(c.full_name||c.email)}')">View →</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function openSupReview(subId, candId, qtr) {
+  const [{ data:sub }, { data:p }, { data:work }, { data:cpd }] = await Promise.all([
+    sb.from('quarter_submissions').select('*').eq('id',subId).single(),
+    sb.from('profiles').select('full_name,email').eq('id',candId).single(),
+    sb.from('logbook_entries').select('*').eq('candidate_id',candId).eq('quarter',qtr).order('log_date'),
+    sb.from('training_entries').select('*').eq('candidate_id',candId).eq('quarter',qtr).order('log_date'),
+  ]);
+
+  const name = p?.full_name || p?.email || '—';
+  const qd   = PY_QUARTERS.find(q=>q.q===qtr) || { title:`Q${qtr}`, target:375 };
+  document.getElementById('sr-title').textContent = `Q${qtr} Review: ${name}`;
+  document.getElementById('sr-sub').textContent   = `${qd.title} · ${qd.supervision} supervision`;
+
+  const totalWork = (work||[]).reduce((s,l)=>s+Number(l.duration),0);
+  const totalCpd  = (cpd||[]).reduce((s,l)=>s+Number(l.hours),0);
+
+  document.getElementById('sr-stats').innerHTML = statsHtml([
+    ['Work Hours', totalWork.toFixed(1), `target ${qd.target}h`],
+    ['CPD Hours',  totalCpd.toFixed(1),  ''],
+    ['% of Target', Math.round(totalWork/qd.target*100)+'%', ''],
+    ['Entries',    (work?.length||0) + (cpd?.length||0), ''],
+  ]);
+
+  document.getElementById('sr-work-tbody').innerHTML = (work||[]).length
+    ? (work||[]).map(l => `
+        <tr>
+          <td>${l.log_date}</td>
+          <td>${esc(l.client)}</td>
+          <td style="max-width:200px;">${esc(l.task)}</td>
+          <td>${(l.competencies||[]).map(c=>`<span class="badge badge-${c}">${COMP_LABELS[c]||c}</span>`).join(' ')}</td>
+          <td>${l.duration}h</td>
+        </tr>`).join('')
+    : emptyRow(5,'📋','No work entries','');
+
+  document.getElementById('sr-cpd-tbody').innerHTML = (cpd||[]).length
+    ? (cpd||[]).map(r => `
+        <tr>
+          <td>${r.log_date}</td>
+          <td style="max-width:220px;">${esc(r.description)}</td>
+          <td>${esc(r.provider||'—')}</td>
+          <td>${r.hours}h</td>
+        </tr>`).join('')
+    : emptyRow(4,'📚','No CPD entries','');
+
+  // Checklist — Q3/Q4 require ethical dilemmas
+  const needEthics = qtr >= 3;
+  document.getElementById('sr-decision-content').innerHTML = `
+    <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:1rem;">Complete the checklist and make your decision. Your notes are shared with the candidate and AFSL compliance.</p>
+    <div style="margin-bottom:1.2rem;">
+      <label class="checklist-item" style="cursor:pointer;">
+        <input type="checkbox" id="chk-logbook" ${sub?.logbook_signed?'checked':''}>
+        <span>Logbook reviewed and entries verified</span>
+      </label>
+      <label class="checklist-item" style="cursor:pointer;">
+        <input type="checkbox" id="chk-reflect" ${sub?.reflection_complete?'checked':''}>
+        <span>Quarterly reflection received and reviewed</span>
+      </label>
+      ${needEthics ? `<label class="checklist-item" style="cursor:pointer;">
+        <input type="checkbox" id="chk-ethics" ${sub?.ethical_dilemmas?'checked':''}>
+        <span>Ethical dilemmas completed (required Q3/Q4)</span>
+      </label>` : '<input type="hidden" id="chk-ethics">'}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sign-off Notes (shared with candidate and compliance)</label>
+      <textarea id="sr-comment" class="form-textarea" placeholder="Notes, feedback, conditions…">${sub?.supervisor_comment||''}</textarea>
+    </div>
+    <div style="display:flex;gap:.65rem;margin-top:.75rem;">
+      <button class="btn btn-sm btn-reject"  onclick="supDecide('${subId}',${qtr},'reject')">✗ Reject</button>
+      <button class="btn btn-sm btn-approve" onclick="supDecide('${subId}',${qtr},'approve')">✓ Approve Quarter</button>
+    </div>`;
+
+  navTo('sup-review');
+}
+
+async function viewCandSummary(candId, name) {
+  const [{ data:work }, { data:cpd }] = await Promise.all([
+    sb.from('logbook_entries').select('*').eq('candidate_id',candId).order('log_date',{ascending:false}),
+    sb.from('training_entries').select('*').eq('candidate_id',candId).order('log_date',{ascending:false}),
+  ]);
+  const totalWork = (work||[]).reduce((s,l)=>s+Number(l.duration),0);
+  const totalCpd  = (cpd||[]).reduce((s,l)=>s+Number(l.hours),0);
+  document.getElementById('sr-title').textContent = esc(name);
+  document.getElementById('sr-sub').textContent   = 'Full logbook summary';
+  document.getElementById('sr-stats').innerHTML   = statsHtml([
+    ['Total Work',totalWork.toFixed(1)+'h',`${Math.round(totalWork/PY_WORK_TARGET*100)}% of PY`],
+    ['Total CPD',totalCpd.toFixed(1)+'h',`${Math.round(totalCpd/PY_CPD_TARGET*100)}% of target`],
+    ['Work Entries',(work?.length||0),''],
+  ]);
+  document.getElementById('sr-work-tbody').innerHTML = (work||[]).map(l => `
+    <tr><td>${l.log_date}</td><td>${esc(l.client)}</td><td>${esc(l.task)}</td>
+    <td>${(l.competencies||[]).map(c=>`<span class="badge badge-${c}">${COMP_LABELS[c]||c}</span>`).join(' ')}</td>
+    <td>${l.duration}h</td></tr>`).join('') || emptyRow(5,'📋','No entries','');
+  document.getElementById('sr-cpd-tbody').innerHTML = (cpd||[]).map(r => `
+    <tr><td>${r.log_date}</td><td>${esc(r.description)}</td><td>${esc(r.provider||'—')}</td><td>${r.hours}h</td></tr>`).join('') || emptyRow(4,'📚','No CPD','');
+  document.getElementById('sr-decision-card').style.display = 'none';
+  navTo('sup-review');
+}
+
+async function supDecide(subId, qtr, action) {
+  const comment   = document.getElementById('sr-comment')?.value?.trim() || '';
+  const logbook   = document.getElementById('chk-logbook')?.checked || false;
+  const reflect   = document.getElementById('chk-reflect')?.checked || false;
+  const ethics    = document.getElementById('chk-ethics')?.checked  || false;
+  const approved  = action === 'approve';
+
+  const { error } = await sb.from('quarter_submissions').update({
+    status:                approved ? 'supervisor_approved' : 'supervisor_rejected',
+    supervisor_comment:    comment,
+    supervisor_reviewed_at:new Date().toISOString(),
+    logbook_signed:        logbook,
+    reflection_complete:   reflect,
+    ethical_dilemmas:      ethics,
+  }).eq('id', subId);
+
+  if (error) return alert('Error: ' + error.message);
+  document.getElementById('sr-decision-card').style.display = '';
+  navTo('sup-dash');
+}
+
+// ─── COMPLIANCE ───────────────────────────────────────────────────────────────
+
+async function loadCompDash() {
+  const { data:all } = await sb.from('quarter_submissions')
+    .select('*, profiles:candidate_id(full_name,email)')
+    .order('submitted_at',{ascending:false});
+  const subs    = all || [];
+  const pending = subs.filter(s => s.status === 'supervisor_approved');
+
+  document.getElementById('comp-stats').innerHTML = statsHtml([
+    ['Awaiting Final Sign-off', pending.length, ''],
+    ['Fully Approved', subs.filter(s=>s.status==='compliance_approved').length, ''],
+    ['Total Submissions', subs.length, ''],
+  ]);
+
+  const cids = [...new Set(pending.map(s=>s.candidate_id))];
+  const hmap = cids.length ? await buildHMap(cids) : {};
+
+  document.getElementById('comp-pending-tbody').innerHTML = pending.length
+    ? pending.map(s => {
+        const h = hmap[`${s.candidate_id}-${s.quarter}`] || {work:0,cpd:0};
+        const name = s.profiles?.full_name || s.profiles?.email || '—';
+        return `<tr>
+          <td>${esc(name)}</td><td>Q${s.quarter}</td>
+          <td>${h.work.toFixed(1)}h</td><td>${h.cpd.toFixed(1)}h</td>
+          <td>${s.supervisor_reviewed_at ? fmtDate(s.supervisor_reviewed_at) : '—'}</td>
+          <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+          <td><button class="btn btn-sm btn-blue" onclick="openCompReview('${s.id}','${s.candidate_id}',${s.quarter})">Review →</button></td>
+        </tr>`;
+      }).join('')
+    : emptyRow(7,'✅','All caught up','');
+}
+
+async function loadHistory() {
+  const qf = document.getElementById('hist-q').value;
+  const sf = document.getElementById('hist-s').value;
+  let q = sb.from('quarter_submissions')
+    .select('*, profiles:candidate_id(full_name,email)')
+    .order('submitted_at',{ascending:false});
+  if (qf) q = q.eq('quarter', parseInt(qf));
+  if (sf) q = q.eq('status', sf);
+  const { data:subs } = await q;
+
+  const cids = [...new Set((subs||[]).map(s=>s.candidate_id))];
+  const hmap = cids.length ? await buildHMap(cids) : {};
+
+  document.getElementById('hist-tbody').innerHTML = (subs||[]).length
+    ? subs.map(s => {
+        const h = hmap[`${s.candidate_id}-${s.quarter}`] || {work:0,cpd:0};
+        const name = s.profiles?.full_name || s.profiles?.email || '—';
+        const canReview = s.status === 'supervisor_approved';
+        return `<tr>
+          <td>${esc(name)}</td><td>Q${s.quarter}</td>
+          <td>${h.work.toFixed(1)}h</td><td>${h.cpd.toFixed(1)}h</td>
+          <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+          <td>${s.submitted_at ? fmtDate(s.submitted_at) : '—'}</td>
+          <td>${canReview ? `<button class="btn btn-sm btn-blue" onclick="openCompReview('${s.id}','${s.candidate_id}',${s.quarter})">Review →</button>` : '—'}</td>
+        </tr>`;
+      }).join('')
+    : emptyRow(7,'📊','No submissions match','');
+}
+
+async function openCompReview(subId, candId, qtr) {
+  const [{ data:sub }, { data:p }, { data:work }, { data:cpd }] = await Promise.all([
+    sb.from('quarter_submissions').select('*').eq('id',subId).single(),
+    sb.from('profiles').select('full_name,email').eq('id',candId).single(),
+    sb.from('logbook_entries').select('*').eq('candidate_id',candId).eq('quarter',qtr).order('log_date'),
+    sb.from('training_entries').select('*').eq('candidate_id',candId).eq('quarter',qtr).order('log_date'),
+  ]);
+
+  const name = p?.full_name || p?.email || '—';
+  const qd   = PY_QUARTERS.find(q=>q.q===qtr) || { title:`Q${qtr}`, target:375 };
+  document.getElementById('cr-title').textContent = `Q${qtr} Final Review: ${name}`;
+  document.getElementById('cr-sub').textContent   = qd.title;
+
+  const totalWork = (work||[]).reduce((s,l)=>s+Number(l.duration),0);
+  const totalCpd  = (cpd||[]).reduce((s,l)=>s+Number(l.hours),0);
+
+  document.getElementById('cr-stats').innerHTML = statsHtml([
+    ['Work Hours', totalWork.toFixed(1), `target ${qd.target}h`],
+    ['CPD Hours',  totalCpd.toFixed(1),  ''],
+    ['% of Target', Math.round(totalWork/qd.target*100)+'%', ''],
+  ]);
+
+  // Supervisor checklist summary
+  const chk = [
+    { label:'Logbook reviewed',           done:sub?.logbook_signed        },
+    { label:'Quarterly reflection done',  done:sub?.reflection_complete   },
+    { label:'Ethical dilemmas completed', done:sub?.ethical_dilemmas, optional:qtr<3 },
+  ];
+  document.getElementById('cr-sup-notes').innerHTML = `
+    <div style="margin-bottom:.75rem;">
+      ${chk.filter(c => !c.optional || qtr>=3).map(c => `
+        <div class="checklist-item">
+          <div class="check-icon ${c.done?'done':'todo'}">${c.done?'✓':'○'}</div>
+          <span style="color:var(--text)">${c.label}</span>
+        </div>`).join('')}
+    </div>
+    ${sub?.supervisor_comment
+      ? `<blockquote style="border-left:3px solid var(--primary);padding-left:.85rem;font-style:italic;">${esc(sub.supervisor_comment)}</blockquote>`
+      : '<em style="color:var(--text-muted)">No supervisor notes.</em>'}`;
+
+  document.getElementById('cr-work-tbody').innerHTML = (work||[]).map(l => `
+    <tr><td>${l.log_date}</td><td>${esc(l.client)}</td><td>${esc(l.task)}</td><td>${l.duration}h</td></tr>`).join('') || emptyRow(4,'📋','No work entries','');
+  document.getElementById('cr-cpd-tbody').innerHTML = (cpd||[]).map(r => `
+    <tr><td>${r.log_date}</td><td>${esc(r.description)}</td><td>${r.hours}h</td></tr>`).join('') || emptyRow(3,'📚','No CPD','');
+
+  document.getElementById('cr-decision-content').innerHTML = `
+    <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:1rem;">This quarter has been signed off by the supervisor. Your approval is the final AFSL compliance sign-off under ASIC RG 146.</p>
+    <div class="form-group">
+      <label class="form-label">Compliance Notes (optional)</label>
+      <textarea id="cr-comment" class="form-textarea" placeholder="Regulatory notes, conditions, or approval reference…"></textarea>
+    </div>
+    <div style="display:flex;gap:.65rem;margin-top:.75rem;">
+      <button class="btn btn-sm btn-reject"  onclick="compDecide('${subId}','reject')">✗ Reject</button>
+      <button class="btn btn-sm btn-approve" onclick="compDecide('${subId}','approve')">✓ Final Approve</button>
+    </div>`;
+
+  navTo('comp-review');
+}
+
+async function compDecide(subId, action) {
+  const comment  = document.getElementById('cr-comment')?.value?.trim() || '';
+  const approved = action === 'approve';
+  const { error } = await sb.from('quarter_submissions').update({
+    status:                 approved ? 'compliance_approved' : 'compliance_rejected',
+    compliance_comment:     comment,
+    compliance_reviewed_at: new Date().toISOString(),
+  }).eq('id', subId);
+  if (error) return alert('Error: ' + error.message);
+  navTo('comp-dash');
+}
+
+// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
+
+async function buildHMap(candidateIds) {
+  const [{ data:work }, { data:cpd }] = await Promise.all([
+    sb.from('logbook_entries').select('candidate_id,quarter,duration').in('candidate_id',candidateIds),
+    sb.from('training_entries').select('candidate_id,quarter,hours').in('candidate_id',candidateIds),
+  ]);
+  const m = {};
+  (work||[]).forEach(l => {
+    const k = `${l.candidate_id}-${l.quarter}`;
+    m[k] = m[k] || {work:0,cpd:0};
+    m[k].work += Number(l.duration);
+  });
+  (cpd||[]).forEach(l => {
+    const k = `${l.candidate_id}-${l.quarter}`;
+    m[k] = m[k] || {work:0,cpd:0};
+    m[k].cpd += Number(l.hours);
+  });
+  return m;
+}
+
+function statusLabel(s) {
+  return {
+    draft:'Draft', submitted:'Submitted',
+    supervisor_approved:'Sup. Approved', supervisor_rejected:'Sup. Rejected',
+    compliance_approved:'✓ Approved', compliance_rejected:'Comp. Rejected',
+  }[s] || s;
+}
+
+function statsHtml(items) {
+  return items.map(([label,val,sub]) =>
+    `<div class="stat">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${val}</div>
+      ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+    </div>`).join('');
+}
+
+function emptyRow(cols, icon, title, sub) {
+  return `<tr><td colspan="${cols}">
+    <div class="empty">
+      <div class="empty-icon">${icon}</div>
+      <div class="empty-title">${title}</div>
+      ${sub ? `<div class="empty-sub">${sub}</div>` : ''}
+    </div>
+  </td></tr>`;
+}
+
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-AU'); }
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function alertEl(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  if (type !== 'warn' && type !== 'error') setTimeout(() => { if(el) el.innerHTML=''; }, 5500);
+}
+</script>
+</body>
+</html>
