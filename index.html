@@ -953,8 +953,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   cfg = loadCfg();
   applyCfg();
 
-  const url = localStorage.getItem('sb_url');
-  const key = localStorage.getItem('sb_key');
+  const HARDCODED_URL = 'https://ybytngeeyfnnfcsytqxf.supabase.co';
+  const HARDCODED_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlieXRuZ2VleWZubmZjc3l0cXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzI1NTcsImV4cCI6MjA5NjY0ODU1N30.fo5Z-9yxUYJyb23xtlDSAc4utmaQVU6Z47mvtE2Z3M8';
+  const url = localStorage.getItem('sb_url') || HARDCODED_URL;
+  const key = localStorage.getItem('sb_key') || HARDCODED_KEY;
 
   // Pre-fill setup form
   document.getElementById('s-product').value  = cfg.productName  || '';
